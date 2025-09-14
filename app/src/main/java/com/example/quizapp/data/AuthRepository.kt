@@ -1,6 +1,10 @@
 package com.example.quizapp.data
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.android.*
@@ -12,27 +16,48 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-// Data classes for API communication
-// ADDING @Serializable is the second key fix.
+// Update data classes to expect a session token from the API
 @Serializable
 data class RegisterRequest(val name: String, val email: String, val password: String)
-
 @Serializable
 data class LoginRequest(val email: String, val password: String)
-
 @Serializable
-data class AuthResponse(val message: String? = null, val user: User? = null, val error: String? = null)
-
+data class AuthResponse(val message: String? = null, val user: User? = null, val session: Session? = null, val error: String? = null)
 @Serializable
 data class User(val id: String, val email: String)
+@Serializable
+data class Session(val access_token: String)
 
-// Sealed class to represent API call results
+
+// Result class (Unchanged)
 sealed class Result<out T> {
     data class Success<out T>(val data: T) : Result<T>()
     data class Error(val message: String) : Result<Nothing>()
 }
 
-class AuthRepository {
+class AuthRepository(private val context: Context) {
+    // Use EncryptedSharedPreferences for secure storage
+    private val sharedPreferences: SharedPreferences
+
+    companion object {
+        private const val KEY_AUTH_TOKEN = "auth_token"
+    }
+
+    init {
+        // Initialize EncryptedSharedPreferences
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        sharedPreferences = EncryptedSharedPreferences.create(
+            context,
+            "secure_auth_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
             json(Json {
@@ -52,7 +77,10 @@ class AuthRepository {
                 setBody(RegisterRequest(name, email, password))
             }
             if (response.status.isSuccess()) {
-                Result.Success(response.body())
+                val authResponse: AuthResponse = response.body()
+                // Save the secure token on successful registration
+                authResponse.session?.access_token?.let { saveToken(it) }
+                Result.Success(authResponse)
             } else {
                 val errorBody: AuthResponse = response.body()
                 Result.Error(errorBody.error ?: "Registration failed")
@@ -70,7 +98,10 @@ class AuthRepository {
                 setBody(LoginRequest(email, password))
             }
             if (response.status.isSuccess()) {
-                Result.Success(response.body())
+                val authResponse: AuthResponse = response.body()
+                // Save the secure token on successful login
+                authResponse.session?.access_token?.let { saveToken(it) }
+                Result.Success(authResponse)
             } else {
                 val errorBody: AuthResponse = response.body()
                 Result.Error(errorBody.error ?: "Login failed")
@@ -79,6 +110,31 @@ class AuthRepository {
             Log.e("AuthRepository", "Login failed", e)
             Result.Error("A network error occurred. Please try again.")
         }
+    }
+
+    // Function now checks for the existence of a token
+    fun isUserLoggedIn(): Boolean {
+        return getToken() != null
+    }
+
+    // Function now clears the token
+    fun logout() {
+        clearToken()
+    }
+
+    // Helper function to save the token
+    private fun saveToken(token: String) {
+        sharedPreferences.edit().putString(KEY_AUTH_TOKEN, token).apply()
+    }
+
+    // Helper function to retrieve the token
+    private fun getToken(): String? {
+        return sharedPreferences.getString(KEY_AUTH_TOKEN, null)
+    }
+
+    // Helper function to clear the token
+    private fun clearToken() {
+        sharedPreferences.edit().remove(KEY_AUTH_TOKEN).apply()
     }
 }
 

@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,19 +25,31 @@ fun AppNavigation() {
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.uiState.collectAsState()
 
-    // This effect observes the authentication state. If the user becomes
-    // authenticated, it navigates to the dashboard and clears the back stack.
+    // Determine the starting screen based on the initial auth state
+    val startDestination = if (authState.isAuthenticated) "dashboard" else "landing"
+
+    // This effect handles navigation when the auth state changes
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
+            // If authenticated, go to dashboard
             navController.navigate("dashboard") {
                 popUpTo("landing") { inclusive = true }
+            }
+        } else {
+            // If not authenticated (e.g., after logout), go to landing
+            // and clear the back stack to prevent going back to the dashboard
+            if (navController.currentDestination?.route != "landing") {
+                navController.navigate("landing") {
+                    popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                }
             }
         }
     }
 
     val animationSpec = tween<IntOffset>(durationMillis = 300)
 
-    NavHost(navController = navController, startDestination = "landing") {
+    // Pass the dynamic startDestination to the NavHost
+    NavHost(navController = navController, startDestination = startDestination) {
         composable("landing") {
             LandingScreen(
                 onLoginClicked = { navController.navigate("login") },
@@ -48,7 +61,6 @@ fun AppNavigation() {
             enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = animationSpec) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = animationSpec) }
         ) {
-            // Pass the single ViewModel instance to the LoginScreen
             LoginScreen(navController = navController, authViewModel = authViewModel)
         }
         composable(
@@ -56,11 +68,11 @@ fun AppNavigation() {
             enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = animationSpec) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = animationSpec) }
         ) {
-            // Pass the same ViewModel instance to the SignUpScreen
             SignUpScreen(navController = navController, authViewModel = authViewModel)
         }
         composable("dashboard") {
-            DashboardScreen()
+            // Pass the logout function from the ViewModel to the Dashboard
+            DashboardScreen(onLogoutClicked = { authViewModel.logout() })
         }
     }
 }
