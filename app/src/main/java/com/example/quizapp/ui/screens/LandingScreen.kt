@@ -69,128 +69,128 @@ fun LandingScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Network Status Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = when {
-                    canReachInternet == true -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                    canReachInternet == false -> Color(0xFFF44336).copy(alpha = 0.1f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Network Diagnostics",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // System Network Status
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("WiFi/Mobile Data:")
-                    Text(
-                        if (isSystemConnected) "ON ✓" else "OFF ✗",
-                        color = if (isSystemConnected) Color(0xFF4CAF50) else Color(0xFFF44336)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Internet Connectivity
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Internet Access:")
-                    Text(
-                        when (canReachInternet) {
-                            true -> "Working ✓"
-                            false -> "Failed ✗"
-                            null -> "Testing..."
-                        },
-                        color = when (canReachInternet) {
-                            true -> Color(0xFF4CAF50)
-                            false -> Color(0xFFF44336)
-                            null -> Color.Gray
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Image Load Status
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Image Loading:")
-                    Text(imageLoadStatus)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Test Image
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .background(
-                            Color.LightGray.copy(alpha = 0.3f),
-                            RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data("https://placehold.co/400x200/3498db/ffffff?text=Internet+OK")
-                            .listener(
-                                onStart = {
-                                    imageLoadStatus = "Loading..."
-                                },
-                                onSuccess = { _, _ ->
-                                    imageLoadStatus = "Success ✓"
-                                },
-                                onError = { _, result ->
-                                    imageLoadStatus = "Failed: ${result.throwable.message}"
-                                }
-                            )
-                            .build(),
-                        contentDescription = "Test Image",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Retry Button
-                Button(
-                    onClick = {
-                        scope.launch {
-                            networkStatus = "Retesting..."
-                            isSystemConnected = checkNetworkConnectivity(context)
-                            canReachInternet = testInternetConnection()
-                            networkStatus = if (canReachInternet == true) {
-                                "✅ Internet is working!"
-                            } else {
-                                "❌ Cannot reach internet"
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Retry Connection Test")
-                }
-            }
-        }
+//        Card(
+//            modifier = Modifier.fillMaxWidth(),
+//            colors = CardDefaults.cardColors(
+//                containerColor = when {
+//                    canReachInternet == true -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+//                    canReachInternet == false -> Color(0xFFF44336).copy(alpha = 0.1f)
+//                    else -> MaterialTheme.colorScheme.surfaceVariant
+//                }
+//            )
+//        ) {
+//            Column(
+//                modifier = Modifier.padding(16.dp),
+//                horizontalAlignment = Alignment.CenterHorizontally
+//            ) {
+//                Text(
+//                    text = "Network Diagnostics",
+//                    style = MaterialTheme.typography.titleMedium,
+//                    fontWeight = FontWeight.Bold
+//                )
+//
+//                Spacer(modifier = Modifier.height(12.dp))
+//
+//                // System Network Status
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("WiFi/Mobile Data:")
+//                    Text(
+//                        if (isSystemConnected) "ON ✓" else "OFF ✗",
+//                        color = if (isSystemConnected) Color(0xFF4CAF50) else Color(0xFFF44336)
+//                    )
+//                }
+//
+//                Spacer(modifier = Modifier.height(8.dp))
+//
+//                // Internet Connectivity
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Internet Access:")
+//                    Text(
+//                        when (canReachInternet) {
+//                            true -> "Working ✓"
+//                            false -> "Failed ✗"
+//                            null -> "Testing..."
+//                        },
+//                        color = when (canReachInternet) {
+//                            true -> Color(0xFF4CAF50)
+//                            false -> Color(0xFFF44336)
+//                            null -> Color.Gray
+//                        }
+//                    )
+//                }
+//
+//                Spacer(modifier = Modifier.height(8.dp))
+//
+//                // Image Load Status
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Image Loading:")
+//                    Text(imageLoadStatus)
+//                }
+//
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                // Test Image
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(80.dp)
+//                        .background(
+//                            Color.LightGray.copy(alpha = 0.3f),
+//                            RoundedCornerShape(8.dp)
+//                        ),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    AsyncImage(
+//                        model = ImageRequest.Builder(context)
+//                            .data("https://placehold.co/400x200/3498db/ffffff?text=Internet+OK")
+//                            .listener(
+//                                onStart = {
+//                                    imageLoadStatus = "Loading..."
+//                                },
+//                                onSuccess = { _, _ ->
+//                                    imageLoadStatus = "Success ✓"
+//                                },
+//                                onError = { _, result ->
+//                                    imageLoadStatus = "Failed: ${result.throwable.message}"
+//                                }
+//                            )
+//                            .build(),
+//                        contentDescription = "Test Image",
+//                        modifier = Modifier.fillMaxSize()
+//                    )
+//                }
+//
+//                Spacer(modifier = Modifier.height(12.dp))
+//
+//                // Retry Button
+//                Button(
+//                    onClick = {
+//                        scope.launch {
+//                            networkStatus = "Retesting..."
+//                            isSystemConnected = checkNetworkConnectivity(context)
+//                            canReachInternet = testInternetConnection()
+//                            networkStatus = if (canReachInternet == true) {
+//                                "✅ Internet is working!"
+//                            } else {
+//                                "❌ Cannot reach internet"
+//                            }
+//                        }
+//                    },
+//                    modifier = Modifier.fillMaxWidth()
+//                ) {
+//                    Text("Retry Connection Test")
+//                }
+//            }
+//        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
