@@ -18,6 +18,7 @@ import com.example.quizapp.ui.screens.dashboard.JoinScreen
 import com.example.quizapp.ui.screens.dashboard.MyQuizzesScreen
 import com.example.quizapp.ui.screens.dashboard.components.DashboardBottomBar
 import com.example.quizapp.data.AuthRepository
+import com.example.quizapp.ui.auth.AuthViewModel
 
 // Animation constants for dashboard
 private const val DASHBOARD_ANIMATION_DURATION = 300 // Slightly faster for tab switching
@@ -50,6 +51,7 @@ fun AnimatedContentTransitionScope<*>.dashboardSlideOutToRight(): ExitTransition
 @Composable
 fun DashboardScreen(
     authRepository: AuthRepository,
+    authViewModel: AuthViewModel,
     onLogoutClicked: () -> Unit
 ) {
     // This is a new, nested NavController just for the dashboard screens
@@ -121,7 +123,7 @@ fun DashboardScreen(
                         }
                     }
                 ) {
-                    MyQuizzesScreen()
+                    MyQuizzesScreen(authRepository = authRepository, authViewModel = authViewModel)
                 }
 
                 composable(

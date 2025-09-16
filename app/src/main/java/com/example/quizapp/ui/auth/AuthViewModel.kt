@@ -65,6 +65,12 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         authRepository.logout()
         _uiState.value = AuthUiState(isAuthenticated = false)
     }
+    // FIX: New function to be called by other ViewModels when a 401 error is detected.
+    fun forceLogout() {
+        // This reuses the existing logout logic, which will trigger the navigation
+        // change in AppNavigation due to the state update.
+        logout()
+    }
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)

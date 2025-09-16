@@ -8,6 +8,7 @@ import androidx.security.crypto.MasterKey
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.android.*
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -15,6 +16,7 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+
 
 // --- Data Classes for API Communication ---
 @Serializable
@@ -27,48 +29,70 @@ data class AuthResponse(val message: String? = null, val user: User? = null, val
 data class User(val id: String, val email: String)
 @Serializable
 data class Session(val access_token: String)
-
-
-
-
-// --- NEW Data Classes for Quiz Creation ---
 @Serializable
-data class CreateQuizRequest(
+data class CreateQuizRequest(val title: String, val description: String?, val duration_minutes: Int, val questions: List<QuestionRequest>)
+@Serializable
+data class QuestionRequest(val text: String, val type: String, val order_number: Int, val marks: Int, val correct_answer_text: String?, val options: List<OptionRequest>?)
+@Serializable
+data class OptionRequest(val text: String, val is_correct: Boolean)
+@Serializable
+data class CreateQuizResponse(val message: String, val quiz: QuizInfo)
+@Serializable
+data class QuizInfo(val id: String, val quiz_code: String)
+
+
+
+
+//// --- NEW Data Classes for Quiz Creation ---
+//@Serializable
+//data class CreateQuizRequest(
+//    val title: String,
+//    val description: String?,
+//    val duration_minutes: Int,
+//    val questions: List<QuestionRequest>
+//)
+//@Serializable
+//data class QuestionRequest(
+//    val text: String,
+//    val type: String, // "MULTIPLE_CHOICE" or "FILL_IN_THE_BLANK"
+//    val order_number: Int,
+//    val marks: Int,
+//    val correct_answer_text: String?, // For fill-in-the-blank
+//    val options: List<OptionRequest>? // For multiple-choice
+//)
+//@Serializable
+//data class OptionRequest(
+//    val text: String,
+//    val is_correct: Boolean
+//)
+//@Serializable
+//data class CreateQuizResponse(
+//    val message: String,
+//    val quiz: QuizInfo
+//)
+//@Serializable
+//data class QuizInfo(
+//    val id: String,
+//    val quiz_code: String
+//)
+//
+//
+//// NEW Data Class for the My Quizzes screen
+@Serializable
+data class MyQuiz(
+    val id: String,
     val title: String,
     val description: String?,
+    val quiz_code: String,
     val duration_minutes: Int,
-    val questions: List<QuestionRequest>
-)
-@Serializable
-data class QuestionRequest(
-    val text: String,
-    val type: String, // "MULTIPLE_CHOICE" or "FILL_IN_THE_BLANK"
-    val order_number: Int,
-    val marks: Int,
-    val correct_answer_text: String?, // For fill-in-the-blank
-    val options: List<OptionRequest>? // For multiple-choice
-)
-@Serializable
-data class OptionRequest(
-    val text: String,
-    val is_correct: Boolean
-)
-@Serializable
-data class CreateQuizResponse(
-    val message: String,
-    val quiz: QuizInfo
-)
-@Serializable
-data class QuizInfo(
-    val id: String,
-    val quiz_code: String
+    val created_at: String
 )
 
 
 // Result class (Unchanged)
 sealed class Result<out T> {
     data class Success<out T>(val data: T) : Result<T>()
-    data class Error(val message: String) : Result<Nothing>()
+    data class Error(val message: String, val isSessionExpired: Boolean = false) : Result<Nothing>()
 }
 
 class AuthRepository(private val context: Context) {
@@ -150,31 +174,51 @@ class AuthRepository(private val context: Context) {
 
     // --- NEW Function for Creating a Quiz ---
     suspend fun createQuiz(quizRequest: CreateQuizRequest): Result<CreateQuizResponse> {
-        val token = getToken()
-        if (token == null) {
-            return Result.Error("User is not authenticated.")
-        }
+        val token = getToken() ?: return Result.Error("User is not authenticated.")
 
         return try {
-            val response: HttpResponse = client.post("$baseUrl/api/quizapp/create") {
+            val response: CreateQuizResponse = client.post("$baseUrl/api/quizapp/quizzes/create") {
                 contentType(ContentType.Application.Json)
-                bearerAuth(token) // Attach the authentication token
+                bearerAuth(token)
                 setBody(quizRequest)
-            }
-
-            if (response.status.isSuccess()) {
-                Result.Success(response.body())
+            }.body()
+            Result.Success(response)
+        } catch (e: ClientRequestException) {
+            // FIX: Specifically catch 401 Unauthorized errors
+            if (e.response.status == HttpStatusCode.Unauthorized) {
+                Result.Error("Session expired. Please log in again.", isSessionExpired = true)
             } else {
-                val errorBody: AuthResponse = response.body()
-                Result.Error(errorBody.error ?: "Failed to create quiz")
+                Log.e("AuthRepository", "Create quiz failed", e)
+                Result.Error("An error occurred while creating the quiz.")
             }
         } catch (e: Exception) {
             Log.e("AuthRepository", "Create quiz failed", e)
-            Result.Error("A network error occurred while creating the quiz.")
+            Result.Error("A network error occurred.")
         }
     }
 
+    // --- NEW Function for Fetching User's Quizzes ---
+    suspend fun getMyQuizzes(): Result<List<MyQuiz>> {
+        val token = getToken() ?: return Result.Error("User is not authenticated.")
 
+        return try {
+            val response: List<MyQuiz> = client.get("$baseUrl/api/quizapp/my-quizzes") {
+                bearerAuth(token)
+            }.body()
+            Result.Success(response)
+        } catch (e: ClientRequestException) {
+            // FIX: Specifically catch 401 Unauthorized errors
+            if (e.response.status == HttpStatusCode.Unauthorized) {
+                Result.Error("Session expired. Please log in again.", isSessionExpired = true)
+            } else {
+                Log.e("AuthRepository", "Get My Quizzes failed", e)
+                Result.Error("An error occurred while fetching quizzes.")
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Get My Quizzes failed", e)
+            Result.Error("A network error occurred.")
+        }
+    }
 
 
 

@@ -126,6 +126,7 @@ fun AppNavigation() {
             // FIX: Pass the repository and logout function to the DashboardScreen.
             DashboardScreen(
                 authRepository = authRepository,
+                authViewModel = authViewModel,
                 onLogoutClicked = { authViewModel.logout() }
             )
         }
