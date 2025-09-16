@@ -16,7 +16,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-// Update data classes to expect a session token from the API
+// --- Data Classes for API Communication ---
 @Serializable
 data class RegisterRequest(val name: String, val email: String, val password: String)
 @Serializable
@@ -27,6 +27,42 @@ data class AuthResponse(val message: String? = null, val user: User? = null, val
 data class User(val id: String, val email: String)
 @Serializable
 data class Session(val access_token: String)
+
+
+
+
+// --- NEW Data Classes for Quiz Creation ---
+@Serializable
+data class CreateQuizRequest(
+    val title: String,
+    val description: String?,
+    val duration_minutes: Int,
+    val questions: List<QuestionRequest>
+)
+@Serializable
+data class QuestionRequest(
+    val text: String,
+    val type: String, // "MULTIPLE_CHOICE" or "FILL_IN_THE_BLANK"
+    val order_number: Int,
+    val marks: Int,
+    val correct_answer_text: String?, // For fill-in-the-blank
+    val options: List<OptionRequest>? // For multiple-choice
+)
+@Serializable
+data class OptionRequest(
+    val text: String,
+    val is_correct: Boolean
+)
+@Serializable
+data class CreateQuizResponse(
+    val message: String,
+    val quiz: QuizInfo
+)
+@Serializable
+data class QuizInfo(
+    val id: String,
+    val quiz_code: String
+)
 
 
 // Result class (Unchanged)
@@ -111,6 +147,37 @@ class AuthRepository(private val context: Context) {
             Result.Error("A network error occurred. Please try again.")
         }
     }
+
+    // --- NEW Function for Creating a Quiz ---
+    suspend fun createQuiz(quizRequest: CreateQuizRequest): Result<CreateQuizResponse> {
+        val token = getToken()
+        if (token == null) {
+            return Result.Error("User is not authenticated.")
+        }
+
+        return try {
+            val response: HttpResponse = client.post("$baseUrl/api/quizapp/create") {
+                contentType(ContentType.Application.Json)
+                bearerAuth(token) // Attach the authentication token
+                setBody(quizRequest)
+            }
+
+            if (response.status.isSuccess()) {
+                Result.Success(response.body())
+            } else {
+                val errorBody: AuthResponse = response.body()
+                Result.Error(errorBody.error ?: "Failed to create quiz")
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Create quiz failed", e)
+            Result.Error("A network error occurred while creating the quiz.")
+        }
+    }
+
+
+
+
+
 
     // Function now checks for the existence of a token
     fun isUserLoggedIn(): Boolean {
